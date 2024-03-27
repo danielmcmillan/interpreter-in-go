@@ -102,14 +102,7 @@ func (e *ExpressionStatement) TokenLiteral() string {
 	return e.Token.Literal
 }
 func (e *ExpressionStatement) String() string {
-	var out bytes.Buffer
-
-	if e.Expression != nil {
-		out.WriteString(e.Expression.String())
-	}
-	out.WriteString(";")
-
-	return out.String()
+	return e.Expression.String()
 }
 
 type Identifier struct {
@@ -135,6 +128,19 @@ func (i *IntegerLiteral) TokenLiteral() string {
 	return i.Token.Literal
 }
 func (i *IntegerLiteral) String() string {
+	return i.TokenLiteral()
+}
+
+type BooleanLiteral struct {
+	Token token.Token
+	Value bool
+}
+
+func (i *BooleanLiteral) expressionNode() {}
+func (i *BooleanLiteral) TokenLiteral() string {
+	return i.Token.Literal
+}
+func (i *BooleanLiteral) String() string {
 	return i.TokenLiteral()
 }
 
@@ -178,9 +184,11 @@ func (ix *InfixExpression) String() string {
 	out.WriteString("(")
 	if ix.Left != nil {
 		out.WriteString(ix.Left.String())
+		out.WriteString(" ")
 	}
 	out.WriteString(ix.Operator)
 	if ix.Right != nil {
+		out.WriteString(" ")
 		out.WriteString(ix.Right.String())
 	}
 	out.WriteString(")")

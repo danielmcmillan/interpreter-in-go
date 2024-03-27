@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"danielmcm.com/interpreterbook/lexer"
-	"danielmcm.com/interpreterbook/token"
+	"danielmcm.com/interpreterbook/parser"
 )
 
 const PROMPT = ">> "
@@ -23,9 +23,13 @@ func Start(in io.Reader, out io.Writer) {
 
 		line := scanner.Text()
 		lexer := lexer.New(line)
+		parser := parser.New(lexer)
 
-		for nextToken := lexer.NextToken(); nextToken.Type != token.EOF; nextToken = lexer.NextToken() {
-			fmt.Fprintf(out, "%+v\n", nextToken)
-		}
+		program := parser.ParseProgram()
+		fmt.Println(program.String())
+
+		// for nextToken := lexer.NextToken(); nextToken.Type != token.EOF; nextToken = lexer.NextToken() {
+		// 	fmt.Fprintf(out, "%+v\n", nextToken)
+		// }
 	}
 }
