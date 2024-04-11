@@ -248,6 +248,11 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{"false", "false"},
 		{"3 > 5 == false", "((3 > 5) == false)"},
 		{"3 < 5 == true", "((3 < 5) == true)"},
+		{"1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"},
+		{"(5 + 5) * 2", "((5 + 5) * 2)"},
+		{"2 / (5 + 5)", "(2 / (5 + 5))"},
+		{"-(5+5)", "(-(5 + 5))"},
+		{"!(true == true)", "(!(true == true))"},
 	}
 
 	for _, test := range tests {
@@ -260,6 +265,65 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 
 		if test.expected != actual {
 			t.Fatalf("Expected %s, got %s\n", test.expected, actual)
+		}
+	}
+}
+
+func TestIfExpression(t *testing.T) {
+	tests := []struct {
+		input       string
+		alternative string
+	}{
+		{`if (x < y) { x }`, ""},
+		{`if (x < y) { x } else { y }`, "y"},
+	}
+
+	for _, test := range tests {
+		lexer := lexer.New(test.input)
+		parser := New(lexer)
+		program := parser.ParseProgram()
+		checkParserErrors(t, parser)
+		checkProgramLen(t, program, 1)
+
+		statement, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("Expected expression statement, got %T", program.Statements[0])
+		}
+
+		ifExpr, ok := statement.Expression.(*ast.IfExpression)
+		if !ok {
+			t.Fatalf("Expected IfExpression, got %T", statement.Expression)
+		}
+
+		if !testInfixExpression(t, ifExpr.Condition, "x", "<", "y") {
+			break
+		}
+		if len(ifExpr.Consequence.Statements) != 1 {
+			t.Fatalf("Expected Consequence to have 1 statement, got %d", len(ifExpr.Consequence.Statements))
+		}
+
+		consequence, ok := ifExpr.Consequence.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("Expected Consequence to have expression statement, got %T", ifExpr.Consequence.Statements[0])
+		}
+
+		if !testLiteralExpression(t, consequence.Expression, "x") {
+			break
+		}
+
+		if len(test.alternative) == 0 {
+			if ifExpr.Alternative != nil {
+				t.Fatalf("Expected Alternative to be unspecified, got %+v", ifExpr.Alternative)
+			}
+		} else {
+			alternative, ok := ifExpr.Alternative.Statements[0].(*ast.ExpressionStatement)
+			if !ok {
+				t.Fatalf("Expected Alternative to have expression statement, got %T", ifExpr.Consequence.Statements[0])
+			}
+
+			if !testLiteralExpression(t, alternative.Expression, test.alternative) {
+				break
+			}
 		}
 	}
 }
