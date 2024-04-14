@@ -38,6 +38,7 @@ func (p *Program) String() string {
 
 	for _, statement := range p.Statements {
 		out.WriteString(statement.String())
+		out.WriteString("\n")
 	}
 
 	return out.String()
@@ -104,9 +105,11 @@ func (b *BlockStatement) TokenLiteral() string {
 func (b *BlockStatement) String() string {
 	var out bytes.Buffer
 
+	out.WriteString("{ ")
 	for _, statement := range b.Statements {
 		out.WriteString(statement.String())
 	}
+	out.WriteString(" }")
 
 	return out.String()
 }
@@ -121,7 +124,7 @@ func (e *ExpressionStatement) TokenLiteral() string {
 	return e.Token.Literal
 }
 func (e *ExpressionStatement) String() string {
-	return e.Expression.String()
+	return e.Expression.String() + ";"
 }
 
 type Identifier struct {
@@ -238,6 +241,58 @@ func (ie *IfExpression) String() string {
 		out.WriteString("else ")
 		out.WriteString(ie.Alternative.String())
 	}
+
+	return out.String()
+}
+
+type FunctionLiteral struct {
+	Token      token.Token
+	Parameters []Identifier
+	Body       *BlockStatement
+}
+
+func (fl *FunctionLiteral) expressionNode() {}
+func (fl *FunctionLiteral) TokenLiteral() string {
+	return fl.Token.Literal
+}
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("fn(")
+	for i, param := range fl.Parameters {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(param.String())
+	}
+	out.WriteString(") ")
+	out.WriteString(fl.Body.String())
+
+	return out.String()
+}
+
+type CallExpression struct {
+	Token     token.Token
+	Function  Expression
+	Arguments []Expression
+}
+
+func (ce *CallExpression) expressionNode() {}
+func (ce *CallExpression) TokenLiteral() string {
+	return ce.Token.Literal
+}
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ce.Function.String())
+	out.WriteString("(")
+	for i, arg := range ce.Arguments {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(arg.String())
+	}
+	out.WriteString(")")
 
 	return out.String()
 }

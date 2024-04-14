@@ -26,10 +26,17 @@ func Start(in io.Reader, out io.Writer) {
 		parser := parser.New(lexer)
 
 		program := parser.ParseProgram()
-		fmt.Println(program.String())
+		errors := parser.Errors()
+		if len(errors) > 0 {
+			printParserErrors(out, errors)
+		} else {
+			fmt.Fprint(out, program.String())
+		}
+	}
+}
 
-		// for nextToken := lexer.NextToken(); nextToken.Type != token.EOF; nextToken = lexer.NextToken() {
-		// 	fmt.Fprintf(out, "%+v\n", nextToken)
-		// }
+func printParserErrors(out io.Writer, errors []error) {
+	for _, err := range errors {
+		fmt.Fprintf(out, "Error: %s\n", err)
 	}
 }

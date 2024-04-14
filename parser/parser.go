@@ -49,6 +49,7 @@ var precedences = map[token.TokenType]int{
 	token.MINUS:    SUM,
 	token.ASTERISK: PRODUCT,
 	token.SLASH:    PRODUCT,
+	token.LPAREN:   CALL,
 }
 
 func getPrecedence(tokenType token.TokenType) int {
@@ -70,6 +71,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	parser.registerPrefix(token.BANG, parser.parsePrefixExpression)
 	parser.registerPrefix(token.MINUS, parser.parsePrefixExpression)
 	parser.registerPrefix(token.IF, parser.parseIfExpression)
+	parser.registerPrefix(token.FUNCTION, parser.parseFunctionalLiteral)
 	parser.registerInfix(token.EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.NOT_EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.LT, parser.parseInfixExpression)
@@ -79,6 +81,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	parser.registerInfix(token.ASTERISK, parser.parseInfixExpression)
 	parser.registerInfix(token.SLASH, parser.parseInfixExpression)
 	parser.registerPrefix(token.LPAREN, parser.parseGroupedExpression)
+	parser.registerInfix(token.LPAREN, parser.parseCallExpression)
 
 	// Populate current and peek token
 	parser.nextToken()
@@ -337,6 +340,60 @@ func (parser *Parser) parseIfExpression() (ast.Expression, error) {
 		expr.Alternative = alternative
 	}
 
+	return expr, nil
+}
+
+func (parser *Parser) parseFunctionalLiteral() (ast.Expression, error) {
+	expr := &ast.FunctionLiteral{Token: parser.currentToken, Parameters: make([]ast.Identifier, 0)}
+
+	if err := parser.expectPeek(token.LPAREN); err != nil {
+		return nil, err
+	}
+	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(token.RPAREN) {
+		if err := parser.expectPeek(token.IDENT); err != nil {
+			return nil, err
+		}
+		expr.Parameters = append(expr.Parameters, ast.Identifier{Token: parser.currentToken, Value: parser.currentToken.Literal})
+		if parser.peekTokenIs(token.COMMA) {
+			parser.nextToken()
+		} else {
+			break
+		}
+	}
+	if err := parser.expectPeek(token.RPAREN); err != nil {
+		return nil, err
+	}
+
+	if err := parser.expectPeek(token.LBRACE); err != nil {
+		return nil, err
+	}
+	body, err := parser.parseBlockStatement()
+	if err != nil {
+		return nil, err
+	}
+	expr.Body = body
+
+	return expr, nil
+}
+
+func (parser *Parser) parseCallExpression(function ast.Expression) (ast.Expression, error) {
+	expr := &ast.CallExpression{Token: parser.currentToken, Function: function, Arguments: make([]ast.Expression, 0)}
+	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(token.RPAREN) {
+		parser.nextToken()
+		arg, err := parser.ParseExpression(LOWEST)
+		if err != nil {
+			return nil, err
+		}
+		expr.Arguments = append(expr.Arguments, arg)
+		if parser.peekTokenIs(token.COMMA) {
+			parser.nextToken()
+		} else {
+			break
+		}
+	}
+	if err := parser.expectPeek(token.RPAREN); err != nil {
+		return nil, err
+	}
 	return expr, nil
 }
 
