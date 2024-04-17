@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"danielmcm.com/interpreterbook/evaluator"
 	"danielmcm.com/interpreterbook/lexer"
 	"danielmcm.com/interpreterbook/parser"
 )
@@ -30,13 +31,19 @@ func Start(in io.Reader, out io.Writer) {
 		if len(errors) > 0 {
 			printParserErrors(out, errors)
 		} else {
-			fmt.Fprint(out, program.String())
+			// fmt.Fprint(out, program.String())
+			result, err := evaluator.Eval(program)
+			if err == nil {
+				fmt.Fprintf(out, "%s\n", result.Inspect())
+			} else {
+				fmt.Fprintf(out, "Error: %s\n", err)
+			}
 		}
 	}
 }
 
 func printParserErrors(out io.Writer, errors []error) {
 	for _, err := range errors {
-		fmt.Fprintf(out, "Error: %s\n", err)
+		fmt.Fprintf(out, "Syntax error: %s\n", err)
 	}
 }
