@@ -33,6 +33,8 @@ func Eval(node ast.Node) (object.Object, error) {
 		return &object.Integer{Value: node.Value}, nil
 	case *ast.BooleanLiteral:
 		return boolObjFromNativeBool(node.Value), nil
+	case *ast.PrefixExpression:
+		return evalPrefixExpression(node.Operator, node.Right)
 	}
 	return nil, EvalError{Message: fmt.Sprintf(`Can't eval node type %T (token "%s")`, node, node.TokenLiteral())}
 }
@@ -55,4 +57,44 @@ func boolObjFromNativeBool(value bool) *object.Boolean {
 	} else {
 		return FALSE
 	}
+}
+
+func evalPrefixExpression(operator string, operand ast.Expression) (object.Object, error) {
+	value, err := Eval(operand)
+	if err != nil {
+		return nil, err
+	}
+
+	var result object.Object = nil
+	ok := false
+	switch operator {
+	case "!":
+		result, ok = evalBangOperatorExpression(value)
+	case "-":
+		result, ok = evalMinusPrefixOperatorExpression(value)
+	}
+	if !ok {
+		return nil, EvalError{Message: fmt.Sprintf("prefix operator %s not supported on %s (%s %s)", operator, operand.String(), value.Type(), value.Inspect())}
+	}
+	return result, nil
+}
+
+func evalBangOperatorExpression(value object.Object) (object.Object, bool) {
+	switch value := value.(type) {
+	case *object.Boolean:
+		return boolObjFromNativeBool(!value.Value), true
+	case *object.Integer:
+		return FALSE, true
+	case *object.Null:
+		return TRUE, true
+	}
+	return nil, false
+}
+
+func evalMinusPrefixOperatorExpression(value object.Object) (object.Object, bool) {
+	intObj, ok := value.(*object.Integer)
+	if !ok {
+		return nil, false
+	}
+	return &object.Integer{Value: -intObj.Value}, true
 }

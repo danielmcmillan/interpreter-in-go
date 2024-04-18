@@ -409,8 +409,10 @@ func (parser *Parser) expectPeek(tokenType token.TokenType) error {
 	if parser.peekTokenIs(tokenType) {
 		parser.nextToken()
 		return nil
-	} else {
+	} else if parser.peekToken.Type != token.EOF {
 		return ParseError{reason: fmt.Sprintf("unexpected token %s, expected %s", parser.peekToken.Literal, tokenType)}
+	} else {
+		return ParseError{reason: fmt.Sprintf("unexpected end of file, expected %s", tokenType)}
 	}
 }
 
