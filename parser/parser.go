@@ -193,6 +193,9 @@ func (parser *Parser) ParseExpressionStatement() (*ast.ExpressionStatement, erro
 }
 
 func (parser *Parser) ParseExpression(precedence int) (ast.Expression, error) {
+	if parser.currentToken.Type == token.EOF {
+		return nil, ParseError{reason: "unexpected end of file, expected expression"}
+	}
 	prefix := parser.prefixParseFns[parser.currentToken.Type]
 
 	if prefix == nil {
