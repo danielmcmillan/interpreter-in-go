@@ -60,6 +60,30 @@ func TestEvalBooleanExpression(t *testing.T) {
 	}
 }
 
+func TestEvalIfExpressions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"if (true) {10}", 10},
+		{"if (false) {10}", nil},
+		{"if (0) {10}", 10},
+		{"if (5>4) {10} else {9}", 10},
+		{"if (5<4) {10} else {9}", 9},
+	}
+
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			if integer, ok := test.expected.(int); ok {
+				testIntegerObject(t, result, int64(integer))
+			} else {
+				testNullObject(t, result)
+			}
+		}
+	}
+}
+
 func TestEvalBangOperator(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -114,6 +138,14 @@ func testBooleanObject(t *testing.T, obj object.Object, expected bool) bool {
 	}
 	if boolObj.Value != expected {
 		t.Errorf("Expected boolean %v, got %v", expected, boolObj.Value)
+		return false
+	}
+	return true
+}
+
+func testNullObject(t *testing.T, obj object.Object) bool {
+	if obj != NULL {
+		t.Errorf("Expected Null object, got %T (%+v)", obj, obj)
 		return false
 	}
 	return true

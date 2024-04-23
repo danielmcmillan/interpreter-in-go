@@ -28,6 +28,8 @@ func Eval(node ast.Node) (object.Object, error) {
 		return evalStatements(node.Statements)
 	case *ast.ExpressionStatement:
 		return Eval(node.Expression)
+	case *ast.BlockStatement:
+		return evalStatements(node.Statements)
 	// Expressions
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}, nil
@@ -37,6 +39,8 @@ func Eval(node ast.Node) (object.Object, error) {
 		return evalPrefixExpression(node.Operator, node.Right)
 	case *ast.InfixExpression:
 		return evalInfixExpression(node.Operator, node.Left, node.Right)
+	case *ast.IfExpression:
+		return evalIfExpression(node)
 	}
 	return nil, EvalError{Message: fmt.Sprintf(`Can't eval node type %T (token "%s")`, node, node.TokenLiteral())}
 }
@@ -81,16 +85,21 @@ func evalPrefixExpression(operator string, right ast.Expression) (object.Object,
 	return result, nil
 }
 
-func evalBangOperatorExpression(operand object.Object) (object.Object, bool) {
-	switch value := operand.(type) {
+func isTruthy(cond object.Object) bool {
+	switch cond := cond.(type) {
 	case *object.Boolean:
-		return boolObjFromNativeBool(!value.Value), true
+		return cond.Value
 	case *object.Integer:
-		return FALSE, true
+		return true
 	case *object.Null:
-		return TRUE, true
+		return false
+	default:
+		return false
 	}
-	return nil, false
+}
+
+func evalBangOperatorExpression(operand object.Object) (object.Object, bool) {
+	return boolObjFromNativeBool(!isTruthy(operand)), true
 }
 
 func evalMinusPrefixOperatorExpression(operand object.Object) (object.Object, bool) {
@@ -166,5 +175,19 @@ func evalBooleanInfixExpression(operator string, left object.Object, right objec
 		return boolObjFromNativeBool(left != right), true
 	default:
 		return nil, false
+	}
+}
+
+func evalIfExpression(expr *ast.IfExpression) (object.Object, error) {
+	cond, err := Eval(expr.Condition)
+	if err != nil {
+		return nil, err
+	}
+	if isTruthy(cond) {
+		return Eval(expr.Consequence)
+	} else if expr.Alternative != nil {
+		return Eval(expr.Alternative)
+	} else {
+		return NULL, nil
 	}
 }
