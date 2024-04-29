@@ -13,14 +13,6 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-type EvalError struct {
-	Message string
-}
-
-func (evalError EvalError) Error() string {
-	return evalError.Message
-}
-
 func Eval(node ast.Node) (object.Object, error) {
 	switch node := node.(type) {
 	// Statements
@@ -44,7 +36,7 @@ func Eval(node ast.Node) (object.Object, error) {
 	case *ast.IfExpression:
 		return evalIfExpression(node)
 	}
-	return nil, EvalError{Message: fmt.Sprintf(`Can't eval node type %T (token "%s")`, node, node.TokenLiteral())}
+	return nil, fmt.Errorf(`can't eval node type %T (token "%s")`, node, node.TokenLiteral())
 }
 
 func evalProgram(program *ast.Program) (object.Object, error) {
@@ -105,7 +97,7 @@ func evalPrefixExpression(operator string, right ast.Expression) (object.Object,
 		result, ok = evalMinusPrefixOperatorExpression(operand)
 	}
 	if !ok {
-		return nil, EvalError{Message: fmt.Sprintf("operator %s not supported on %s (%s %s)", operator, right.String(), operand.Type(), operand.Inspect())}
+		return nil, fmt.Errorf("operator %s not supported on %s (%s %s)", operator, right.String(), operand.Type(), operand.Inspect())
 	}
 	return result, nil
 }
@@ -156,7 +148,7 @@ func evalInfixExpression(operator string, left ast.Expression, right ast.Express
 		result, ok = evalBooleanInfixExpression(operator, leftOperand, rightOperand)
 	}
 	if !ok {
-		return nil, EvalError{Message: fmt.Sprintf("operator %s not supported on %s (%s %s) and %s (%s %s)", operator, left.String(), leftOperand.Type(), leftOperand.Inspect(), right.String(), rightOperand.Type(), rightOperand.Inspect())}
+		return nil, fmt.Errorf("operator %s not supported on %s (%s %s) and %s (%s %s)", operator, left.String(), leftOperand.Type(), leftOperand.Inspect(), right.String(), rightOperand.Type(), rightOperand.Inspect())
 	}
 	return result, nil
 }

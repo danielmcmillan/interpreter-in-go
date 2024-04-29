@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"strings"
 	"testing"
 
 	"danielmcm.com/interpreterbook/lexer"
@@ -123,12 +124,33 @@ func TestReturnStatements(t *testing.T) {
 	}
 }
 
-func testEval(t *testing.T, input string) (object.Object, bool) {
+func TestErrorHandling(t *testing.T) {
+	tests := []struct {
+		input   string
+		pattern string
+	}{
+		{"true-false", "- not supported"},
+		{"5+true; 5-false", "+ not supported"},
+		{"-true", "- not supported"},
+	}
+
+	for _, test := range tests {
+		result, err := runEval(test.input)
+		if err == nil || !strings.Contains(err.Error(), test.pattern) {
+			t.Errorf("expected Eval(\"%v\") to return error matching \"%v\", got \"%v\", result = %+v\n", test.input, test.pattern, err, result)
+		}
+	}
+}
+
+func runEval(input string) (object.Object, error) {
 	lexer := lexer.New(input)
 	parser := parser.New(lexer)
 	program := parser.ParseProgram()
+	return Eval(program)
+}
 
-	obj, err := Eval(program)
+func testEval(t *testing.T, input string) (object.Object, bool) {
+	obj, err := runEval(input)
 	if err != nil {
 		t.Errorf("Eval failed: %s", err)
 		return nil, false
