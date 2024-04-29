@@ -25,11 +25,13 @@ func Eval(node ast.Node) (object.Object, error) {
 	switch node := node.(type) {
 	// Statements
 	case *ast.Program:
-		return evalStatements(node.Statements)
+		return evalProgram(node)
 	case *ast.ExpressionStatement:
 		return Eval(node.Expression)
 	case *ast.BlockStatement:
 		return evalStatements(node.Statements)
+	case *ast.ReturnStatement:
+		return evalReturnStatement(node)
 	// Expressions
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}, nil
@@ -45,6 +47,18 @@ func Eval(node ast.Node) (object.Object, error) {
 	return nil, EvalError{Message: fmt.Sprintf(`Can't eval node type %T (token "%s")`, node, node.TokenLiteral())}
 }
 
+func evalProgram(program *ast.Program) (object.Object, error) {
+	result, err := evalStatements(program.Statements)
+	if err != nil {
+		return nil, err
+	}
+	if returnObj, ok := result.(*object.ReturnValue); ok {
+		return returnObj.Value, nil
+	} else {
+		return result, err
+	}
+}
+
 func evalStatements(statements []ast.Statement) (object.Object, error) {
 	var result object.Object
 	for _, statement := range statements {
@@ -52,9 +66,20 @@ func evalStatements(statements []ast.Statement) (object.Object, error) {
 		if err != nil {
 			return nil, err
 		}
+		if obj.Type() == object.RETURN_VALUE_OBJ {
+			return obj, nil
+		}
 		result = obj
 	}
 	return result, nil
+}
+
+func evalReturnStatement(statement *ast.ReturnStatement) (object.Object, error) {
+	val, err := Eval(statement.ReturnValue)
+	if err != nil {
+		return nil, err
+	}
+	return &object.ReturnValue{Value: val}, nil
 }
 
 func boolObjFromNativeBool(value bool) *object.Boolean {

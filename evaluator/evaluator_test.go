@@ -104,6 +104,25 @@ func TestEvalBangOperator(t *testing.T) {
 	}
 }
 
+func TestReturnStatements(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"return 5", 5},
+		{"1; 2; return 3; return 4; 5", 3},
+		{"1; if (true) { if (5) { 1; return 2; }; 3; } return 4;", 2},
+		{"1; if (false) { return 1 } else { return 2 } return 3;", 2},
+	}
+
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			testIntegerObject(t, result, test.expected)
+		}
+	}
+}
+
 func testEval(t *testing.T, input string) (object.Object, bool) {
 	lexer := lexer.New(input)
 	parser := parser.New(lexer)
