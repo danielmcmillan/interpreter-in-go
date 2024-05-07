@@ -7,6 +7,7 @@ import (
 
 	"danielmcm.com/interpreterbook/evaluator"
 	"danielmcm.com/interpreterbook/lexer"
+	"danielmcm.com/interpreterbook/object"
 	"danielmcm.com/interpreterbook/parser"
 )
 
@@ -14,6 +15,7 @@ const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+	env := object.NewEnvironment()
 
 	for {
 		fmt.Fprint(out, PROMPT)
@@ -32,7 +34,7 @@ func Start(in io.Reader, out io.Writer) {
 			printParserErrors(out, errors)
 		} else {
 			// fmt.Fprint(out, program.String())
-			result, err := evaluator.Eval(program)
+			result, err := evaluator.Eval(program, env)
 			if err == nil {
 				fmt.Fprintf(out, "%s\n", result.Inspect())
 			} else {

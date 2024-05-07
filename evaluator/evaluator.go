@@ -13,48 +13,56 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-func Eval(node ast.Node) (object.Object, error) {
+func Eval(node ast.Node, env *object.Environment) (object.Object, error) {
 	switch node := node.(type) {
 	// Statements
 	case *ast.Program:
-		return evalProgram(node)
+		return evalStatementsAndReturn(node.Statements, env)
 	case *ast.ExpressionStatement:
-		return Eval(node.Expression)
+		return Eval(node.Expression, env)
 	case *ast.BlockStatement:
-		return evalStatements(node.Statements)
+		return evalStatements(node.Statements, env)
 	case *ast.ReturnStatement:
-		return evalReturnStatement(node)
+		return evalReturnStatement(node, env)
+	case *ast.LetStatement:
+		return evalLetStatement(node, env)
 	// Expressions
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}, nil
 	case *ast.BooleanLiteral:
 		return boolObjFromNativeBool(node.Value), nil
+	case *ast.Identifier:
+		return evalIdentifier(node.Value, env)
 	case *ast.PrefixExpression:
-		return evalPrefixExpression(node.Operator, node.Right)
+		return evalPrefixExpression(node.Operator, node.Right, env)
 	case *ast.InfixExpression:
-		return evalInfixExpression(node.Operator, node.Left, node.Right)
+		return evalInfixExpression(node.Operator, node.Left, node.Right, env)
 	case *ast.IfExpression:
-		return evalIfExpression(node)
+		return evalIfExpression(node, env)
+	case *ast.FunctionLiteral:
+		return evalFunctionLiteral(node, env)
+	case *ast.CallExpression:
+		return evalCallExpression(node, env)
 	}
 	return nil, fmt.Errorf(`can't eval node type %T (token "%s")`, node, node.TokenLiteral())
 }
 
-func evalProgram(program *ast.Program) (object.Object, error) {
-	result, err := evalStatements(program.Statements)
+func evalStatementsAndReturn(statements []ast.Statement, env *object.Environment) (object.Object, error) {
+	result, err := evalStatements(statements, env)
 	if err != nil {
 		return nil, err
 	}
 	if returnObj, ok := result.(*object.ReturnValue); ok {
 		return returnObj.Value, nil
 	} else {
-		return result, err
+		return result, nil
 	}
 }
 
-func evalStatements(statements []ast.Statement) (object.Object, error) {
+func evalStatements(statements []ast.Statement, env *object.Environment) (object.Object, error) {
 	var result object.Object
 	for _, statement := range statements {
-		obj, err := Eval(statement)
+		obj, err := Eval(statement, env)
 		if err != nil {
 			return nil, err
 		}
@@ -66,12 +74,21 @@ func evalStatements(statements []ast.Statement) (object.Object, error) {
 	return result, nil
 }
 
-func evalReturnStatement(statement *ast.ReturnStatement) (object.Object, error) {
-	val, err := Eval(statement.ReturnValue)
+func evalReturnStatement(statement *ast.ReturnStatement, env *object.Environment) (object.Object, error) {
+	val, err := Eval(statement.ReturnValue, env)
 	if err != nil {
 		return nil, err
 	}
 	return &object.ReturnValue{Value: val}, nil
+}
+
+func evalLetStatement(statement *ast.LetStatement, env *object.Environment) (object.Object, error) {
+	val, err := Eval(statement.Value, env)
+	if err != nil {
+		return nil, err
+	}
+	env.Set(statement.Name.Value, val)
+	return NULL, nil
 }
 
 func boolObjFromNativeBool(value bool) *object.Boolean {
@@ -82,8 +99,16 @@ func boolObjFromNativeBool(value bool) *object.Boolean {
 	}
 }
 
-func evalPrefixExpression(operator string, right ast.Expression) (object.Object, error) {
-	operand, err := Eval(right)
+func evalIdentifier(ident string, env *object.Environment) (object.Object, error) {
+	val, ok := env.Get(ident)
+	if !ok {
+		return nil, fmt.Errorf("identifier not found: %s", ident)
+	}
+	return val, nil
+}
+
+func evalPrefixExpression(operator string, right ast.Expression, env *object.Environment) (object.Object, error) {
+	operand, err := Eval(right, env)
 	if err != nil {
 		return nil, err
 	}
@@ -127,12 +152,12 @@ func evalMinusPrefixOperatorExpression(operand object.Object) (object.Object, bo
 	return &object.Integer{Value: -intObj.Value}, true
 }
 
-func evalInfixExpression(operator string, left ast.Expression, right ast.Expression) (object.Object, error) {
-	leftOperand, err := Eval(left)
+func evalInfixExpression(operator string, left ast.Expression, right ast.Expression, env *object.Environment) (object.Object, error) {
+	leftOperand, err := Eval(left, env)
 	if err != nil {
 		return nil, err
 	}
-	rightOperand, err := Eval(right)
+	rightOperand, err := Eval(right, env)
 	if err != nil {
 		return nil, err
 	}
@@ -195,16 +220,57 @@ func evalBooleanInfixExpression(operator string, left object.Object, right objec
 	}
 }
 
-func evalIfExpression(expr *ast.IfExpression) (object.Object, error) {
-	cond, err := Eval(expr.Condition)
+func evalIfExpression(expr *ast.IfExpression, env *object.Environment) (object.Object, error) {
+	cond, err := Eval(expr.Condition, env)
 	if err != nil {
 		return nil, err
 	}
 	if isTruthy(cond) {
-		return Eval(expr.Consequence)
+		return Eval(expr.Consequence, env)
 	} else if expr.Alternative != nil {
-		return Eval(expr.Alternative)
+		return Eval(expr.Alternative, env)
 	} else {
 		return NULL, nil
 	}
+}
+
+func evalFunctionLiteral(expr *ast.FunctionLiteral, env *object.Environment) (object.Object, error) {
+	obj := &object.Function{
+		Parameters: make([]string, len(expr.Parameters)),
+		Body:       expr.Body,
+		Env:        env,
+	}
+	for i, param := range expr.Parameters {
+		obj.Parameters[i] = param.Value
+	}
+	return obj, nil
+}
+
+func evalCallExpression(expr *ast.CallExpression, env *object.Environment) (object.Object, error) {
+	called, err := Eval(expr.Function, env)
+	if err != nil {
+		return nil, err
+	}
+	fn, ok := called.(*object.Function)
+	if !ok {
+		return nil, fmt.Errorf("not a function: %s", expr.Function.String())
+	}
+	if len(fn.Parameters) != len(expr.Arguments) {
+		return nil, fmt.Errorf("function with %d parameters called with %d arguments", len(fn.Parameters), len(expr.Arguments))
+	}
+
+	fnEnv := object.NewEnclosedEnvironment(fn.Env)
+	for i, param := range fn.Parameters {
+		arg, err := Eval(expr.Arguments[i], env)
+		if err != nil {
+			return nil, err
+		}
+		fnEnv.Set(param, arg)
+	}
+
+	result, err := evalStatementsAndReturn(fn.Body.Statements, fnEnv)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

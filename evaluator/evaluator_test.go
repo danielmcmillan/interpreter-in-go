@@ -114,8 +114,67 @@ func TestReturnStatements(t *testing.T) {
 		{"1; 2; return 3; return 4; 5", 3},
 		{"1; if (true) { if (5) { 1; return 2; }; 3; } return 4;", 2},
 		{"1; if (false) { return 1 } else { return 2 } return 3;", 2},
+		{"(fn() {1; (fn() { return 2; })(); return 5; 6;})();", 5},
 	}
 
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			testIntegerObject(t, result, test.expected)
+		}
+	}
+}
+
+func TestLetStatements(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"let a = 5; a", 5},
+		{"let a = 2; let b = a*3; a*b;", 12},
+		{"let a = 2; let b = a == 2; if(b) {a} else {0}", 2},
+	}
+
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			testIntegerObject(t, result, test.expected)
+		}
+	}
+}
+
+func TestFunctionObject(t *testing.T) {
+	input := "fn(x) { x + 2 }"
+	result, ok := testEval(t, input)
+	if !ok {
+		return
+	}
+	fn, ok := result.(*object.Function)
+	if !ok {
+		t.Fatalf("expected function object, got %T (%+v)", fn, fn)
+	}
+	if len(fn.Parameters) != 1 || fn.Parameters[0] != "x" {
+		t.Fatalf("expected 1 parameter x, got %+v", fn.Parameters)
+	}
+	expectedBody := "{ (x + 2); }"
+	if fn.Body.String() != expectedBody {
+		t.Fatalf("expected function body %q, got %q", expectedBody, fn.Body.String())
+	}
+}
+
+func TestFunctionCall(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"(fn() {5})()", 5},
+		{"let id = fn(x) { x }; id(5);", 5},
+		{"let id = fn(x) { return x }; id(5);", 5},
+		{"(fn(x) {x() * 2})(fn() {3})", 6},
+		{"let mul = fn(x, y) { x * y }; mul(mul(mul(1, 2), 3), mul(2, 5));", 60},
+		{"(fn() {let x = 5; fn() {x}})()()", 5},
+		{"let adder = fn(x){fn(y){x+y}}; let aa = adder(3); let ab = adder(5); aa(-3) + ab(-5)", 0},
+	}
 	for _, test := range tests {
 		result, ok := testEval(t, test.input)
 		if ok {
@@ -132,6 +191,10 @@ func TestErrorHandling(t *testing.T) {
 		{"true-false", "- not supported"},
 		{"5+true; 5-false", "+ not supported"},
 		{"-true", "- not supported"},
+		{"foobar", "identifier not found: foobar"},
+		{"true()", "not a function: true"},
+		{"(fn() {0})(5)", "called with 1 argument"},
+		{"(fn(x) {x})()", "called with 0 argument"},
 	}
 
 	for _, test := range tests {
@@ -146,7 +209,7 @@ func runEval(input string) (object.Object, error) {
 	lexer := lexer.New(input)
 	parser := parser.New(lexer)
 	program := parser.ParseProgram()
-	return Eval(program)
+	return Eval(program, object.NewEnvironment())
 }
 
 func testEval(t *testing.T, input string) (object.Object, bool) {

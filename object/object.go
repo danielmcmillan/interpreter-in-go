@@ -1,6 +1,12 @@
 package object
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	"danielmcm.com/interpreterbook/ast"
+)
 
 type ObjectType string
 
@@ -9,11 +15,41 @@ const (
 	INTEGER_OBJ      = "INTEGER"
 	BOOLEAN_OBJ      = "BOOLEAN"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
+	FUNCTION_OBJ     = "FUNCTION"
 )
 
 type Object interface {
 	Type() ObjectType
 	Inspect() string
+}
+
+type Environment struct {
+	store map[string]Object
+	outer *Environment
+}
+
+func NewEnvironment() *Environment {
+	store := make(map[string]Object)
+	return &Environment{store: store, outer: nil}
+}
+
+func NewEnclosedEnvironment(outer *Environment) *Environment {
+	env := NewEnvironment()
+	env.outer = outer
+	return env
+}
+
+func (env *Environment) Get(name string) (Object, bool) {
+	val, ok := env.store[name]
+	if !ok && env.outer != nil {
+		return env.outer.Get(name)
+	}
+	return val, ok
+}
+
+func (env *Environment) Set(name string, val Object) Object {
+	env.store[name] = val
+	return val
 }
 
 type Null struct{}
@@ -60,4 +96,22 @@ func (returnValue *ReturnValue) Type() ObjectType {
 }
 func (returnValue *ReturnValue) Inspect() string {
 	return returnValue.Value.Inspect()
+}
+
+type Function struct {
+	Parameters []string
+	Body       *ast.BlockStatement
+	Env        *Environment
+}
+
+func (fn *Function) Type() ObjectType {
+	return FUNCTION_OBJ
+}
+func (fn *Function) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("fn(")
+	out.WriteString(strings.Join(fn.Parameters, ", "))
+	out.WriteString(") ")
+	out.WriteString(fn.Body.String())
+	return out.String()
 }
