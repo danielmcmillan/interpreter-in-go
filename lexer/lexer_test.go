@@ -26,6 +26,9 @@ func TestNextToken(t *testing.T) {
 
 	10 == 10;
 	10 != 9;
+
+	"foo bar"
+	"{\"abc\": \"x\ty\n1\t2\n\"}"
 	`
 
 	tests := []struct {
@@ -105,18 +108,18 @@ func TestNextToken(t *testing.T) {
 		{token.NOT_EQ, "!="},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
+		{token.STRING, "foo bar"},
+		{token.STRING, "{\"abc\": \"x\ty\n1\t2\n\"}"},
 		{token.EOF, ""},
 	}
 
-	// if (5 < 10) {
-	// 	return true;
-	// } else {
-	// 	return false;
-	// }
 	lexer := New(input)
 
 	for i, expected := range tests {
-		token := lexer.NextToken()
+		token, err := lexer.NextToken()
+		if err != nil {
+			t.Fatalf("tests[%d] - received error %v", i, err)
+		}
 
 		if token.Type != expected.tokenType {
 			t.Fatalf(
@@ -134,5 +137,21 @@ func TestNextToken(t *testing.T) {
 				token.Literal,
 			)
 		}
+	}
+}
+
+func TestErrors(t *testing.T) {
+	tests := []struct {
+		input   string
+		pattern string
+	}{
+		{"\"", "unterminated string"},
+		{"\"\\\"", "unterminated string"},
+		{"let x = \"hello ;", "unterminated string"},
+	}
+
+	for _, test := range tests {
+		lexer := New(test.input)
+		lexer.NextToken()
 	}
 }

@@ -1,6 +1,10 @@
 package lexer
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+
 	"danielmcm.com/interpreterbook/token"
 )
 
@@ -14,14 +18,17 @@ type Lexer struct {
 	char byte
 }
 
+var ErrLexer error = errors.New("tokenisation error")
+
 func New(input string) *Lexer {
 	lexer := &Lexer{input: input}
 	lexer.readChar()
 	return lexer
 }
 
-func (lexer *Lexer) NextToken() token.Token {
+func (lexer *Lexer) NextToken() (token.Token, error) {
 	var nextToken token.Token
+	var err error
 
 	lexer.readMatching(isWhitespace)
 
@@ -65,20 +72,22 @@ func (lexer *Lexer) NextToken() token.Token {
 		nextToken = token.Token{Type: token.LBRACE, Literal: string(lexer.char)}
 	case '}':
 		nextToken = token.Token{Type: token.RBRACE, Literal: string(lexer.char)}
+	case '"':
+		nextToken, err = lexer.readString()
 	case 0:
 		nextToken = token.Token{Type: token.EOF, Literal: ""}
 	default:
 		if isLetter(lexer.char) {
 			identifier := lexer.readMatching(isLetter)
-			return token.Token{Type: token.LookupIdentifier(identifier), Literal: identifier}
+			return token.Token{Type: token.LookupIdentifier(identifier), Literal: identifier}, nil
 		} else if isDigit(lexer.char) {
-			return token.Token{Type: token.INT, Literal: lexer.readMatching(isDigit)}
+			return token.Token{Type: token.INT, Literal: lexer.readMatching(isDigit)}, nil
 		} else {
 			nextToken = token.Token{Type: token.ILLEGAL, Literal: string(lexer.char)}
 		}
 	}
 	lexer.readChar()
-	return nextToken
+	return nextToken, err
 }
 
 func (lexer *Lexer) readChar() {
@@ -100,7 +109,7 @@ func (lexer *Lexer) readMatching(predicate func(byte) bool) string {
 	if position >= len(lexer.input) {
 		return ""
 	}
-	for predicate(lexer.char) {
+	for predicate(lexer.char) && lexer.char != 0 {
 		lexer.readChar()
 	}
 	return lexer.input[position:lexer.position]
@@ -116,4 +125,29 @@ func isDigit(char byte) bool {
 
 func isWhitespace(char byte) bool {
 	return char == ' ' || char == '\t' || char == '\n' || char == '\r'
+}
+
+func (lexer *Lexer) readString() (token.Token, error) {
+	var literal bytes.Buffer
+	for {
+		lexer.readChar()
+		char := lexer.char
+		if char == '"' {
+			break
+		} else if char == '\\' {
+			lexer.readChar()
+			char = lexer.char
+			switch char {
+			case 'n':
+				char = '\n'
+			case 't':
+				char = '\t'
+			}
+		}
+		if char == 0 {
+			return token.Token{}, fmt.Errorf("unterminated string literal")
+		}
+		literal.WriteByte(char)
+	}
+	return token.Token{Type: token.STRING, Literal: literal.String()}, nil
 }
