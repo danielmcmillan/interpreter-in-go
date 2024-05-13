@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"fmt"
 
 	"danielmcm.com/interpreterbook/token"
 )
@@ -158,12 +159,25 @@ type BooleanLiteral struct {
 	Value bool
 }
 
-func (i *BooleanLiteral) expressionNode() {}
-func (i *BooleanLiteral) TokenLiteral() string {
-	return i.Token.Literal
+func (b *BooleanLiteral) expressionNode() {}
+func (b *BooleanLiteral) TokenLiteral() string {
+	return b.Token.Literal
 }
-func (i *BooleanLiteral) String() string {
-	return i.TokenLiteral()
+func (b *BooleanLiteral) String() string {
+	return b.TokenLiteral()
+}
+
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (s *StringLiteral) expressionNode() {}
+func (s *StringLiteral) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *StringLiteral) String() string {
+	return fmt.Sprintf("\"%s\"", s.Value)
 }
 
 type PrefixExpression struct {

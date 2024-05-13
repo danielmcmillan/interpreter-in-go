@@ -148,6 +148,24 @@ func TestBooleanLiteralExpression(t *testing.T) {
 	}
 }
 
+func TestStringLiteralExpression(t *testing.T) {
+	input := `"hello"`
+
+	lexer := lexer.New(input)
+	parser := New(lexer)
+	program := parser.ParseProgram()
+
+	checkParserErrors(t, parser)
+	checkProgramLen(t, program, 1)
+
+	statement, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Expected expression statement, got %T", program.Statements[0])
+	}
+
+	testStringLiteral(t, statement.Expression, "hello")
+}
+
 func TestParsingPrefixExpression(t *testing.T) {
 	prefixTests := []struct {
 		input    string
@@ -454,6 +472,20 @@ func testIntegerLiteral(t *testing.T, expr ast.Expression, value int64) bool {
 
 	if literal.Value != value {
 		t.Errorf("Expected integer %v, got %v", value, literal.Value)
+		return false
+	}
+	return true
+}
+
+func testStringLiteral(t *testing.T, expr ast.Expression, value string) bool {
+	literal, ok := expr.(*ast.StringLiteral)
+	if !ok {
+		t.Errorf("Expected StringLiteral, got %T", expr)
+		return false
+	}
+
+	if literal.Value != value {
+		t.Errorf("Expected string %v, got %v", value, literal.Value)
 		return false
 	}
 	return true
