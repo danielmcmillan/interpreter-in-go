@@ -14,6 +14,7 @@ const (
 	NULL_OBJ         = "NULL"
 	INTEGER_OBJ      = "INTEGER"
 	BOOLEAN_OBJ      = "BOOLEAN"
+	STRING_OBJ       = "STRING"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	FUNCTION_OBJ     = "FUNCTION"
 )
@@ -85,6 +86,17 @@ func (boolean *Boolean) Inspect() string {
 	} else {
 		return "false"
 	}
+}
+
+type String struct {
+	Value string
+}
+
+func (str *String) Type() ObjectType {
+	return STRING_OBJ
+}
+func (str *String) Inspect() string {
+	return str.Value
 }
 
 type ReturnValue struct {

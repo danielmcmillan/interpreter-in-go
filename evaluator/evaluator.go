@@ -31,6 +31,8 @@ func Eval(node ast.Node, env *object.Environment) (object.Object, error) {
 		return &object.Integer{Value: node.Value}, nil
 	case *ast.BooleanLiteral:
 		return boolObjFromNativeBool(node.Value), nil
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}, nil
 	case *ast.Identifier:
 		return evalIdentifier(node.Value, env)
 	case *ast.PrefixExpression:
@@ -171,6 +173,8 @@ func evalInfixExpression(operator string, left ast.Expression, right ast.Express
 		}
 	} else if leftOperand.Type() == object.BOOLEAN_OBJ && rightOperand.Type() == object.BOOLEAN_OBJ {
 		result, ok = evalBooleanInfixExpression(operator, leftOperand, rightOperand)
+	} else if leftOperand.Type() == object.STRING_OBJ && rightOperand.Type() == object.STRING_OBJ {
+		result, ok = evalStringInfixExpression(operator, leftOperand, rightOperand)
 	}
 	if !ok {
 		return nil, fmt.Errorf("operator %s not supported on %s (%s %s) and %s (%s %s)", operator, left.String(), leftOperand.Type(), leftOperand.Inspect(), right.String(), rightOperand.Type(), rightOperand.Inspect())
@@ -215,6 +219,28 @@ func evalBooleanInfixExpression(operator string, left object.Object, right objec
 		return boolObjFromNativeBool(left == right), true
 	case "!=":
 		return boolObjFromNativeBool(left != right), true
+	default:
+		return nil, false
+	}
+}
+
+func evalStringInfixExpression(operator string, left object.Object, right object.Object) (object.Object, bool) {
+	leftString, leftOk := left.(*object.String)
+	rightString, rightOk := right.(*object.String)
+	if !leftOk || !rightOk {
+		return nil, false
+	}
+	switch operator {
+	case "+":
+		return &object.String{Value: leftString.Value + rightString.Value}, true
+	case "<":
+		return boolObjFromNativeBool(leftString.Value < rightString.Value), true
+	case ">":
+		return boolObjFromNativeBool(leftString.Value > rightString.Value), true
+	case "==":
+		return boolObjFromNativeBool(leftString.Value == rightString.Value), true
+	case "!=":
+		return boolObjFromNativeBool(leftString.Value != rightString.Value), true
 	default:
 		return nil, false
 	}

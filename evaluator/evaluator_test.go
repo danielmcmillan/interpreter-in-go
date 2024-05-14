@@ -51,12 +51,35 @@ func TestEvalBooleanExpression(t *testing.T) {
 		{"true==false", false},
 		{"true!=false", true},
 		{"true!=true", false},
+		{`"a"=="a"`, true},
+		{`"a"!="a"`, false},
+		{`"a"=="b"`, false},
+		{`"a"!="b"`, true},
+		{`"a"<"b"`, true},
+		{`"a">"b"`, false},
 	}
 
 	for _, test := range tests {
 		result, ok := testEval(t, test.input)
 		if ok {
 			testBooleanObject(t, result, test.expected)
+		}
+	}
+}
+
+func TestEvalStringExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{`"hello"`, "hello"},
+		{`"hello" + " " + "world"`, "hello world"},
+	}
+
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			testStringObject(t, result, test.expected)
 		}
 	}
 }
@@ -195,6 +218,8 @@ func TestErrorHandling(t *testing.T) {
 		{"true()", "not a function: true"},
 		{"(fn() {0})(5)", "called with 1 argument"},
 		{"(fn(x) {x})()", "called with 0 argument"},
+		{`"5"-"4"`, "- not supported"},
+		{`"5"+4`, "+ not supported"},
 	}
 
 	for _, test := range tests {
@@ -242,6 +267,19 @@ func testBooleanObject(t *testing.T, obj object.Object, expected bool) bool {
 	}
 	if boolObj.Value != expected {
 		t.Errorf("Expected boolean %v, got %v", expected, boolObj.Value)
+		return false
+	}
+	return true
+}
+
+func testStringObject(t *testing.T, obj object.Object, expected string) bool {
+	strObj, ok := obj.(*object.String)
+	if !ok {
+		t.Errorf("Expected String object, got %T (%+v)", obj, obj)
+		return false
+	}
+	if strObj.Value != expected {
+		t.Errorf("Expected boolean %v, got %v", expected, strObj.Value)
 		return false
 	}
 	return true
