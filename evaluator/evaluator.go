@@ -102,11 +102,13 @@ func boolObjFromNativeBool(value bool) *object.Boolean {
 }
 
 func evalIdentifier(ident string, env *object.Environment) (object.Object, error) {
-	val, ok := env.Get(ident)
-	if !ok {
-		return nil, fmt.Errorf("identifier not found: %s", ident)
+	if val, ok := env.Get(ident); ok {
+		return val, nil
 	}
-	return val, nil
+	if val, ok := builtins[ident]; ok {
+		return val, nil
+	}
+	return nil, fmt.Errorf("identifier not found: %s", ident)
 }
 
 func evalPrefixExpression(operator string, right ast.Expression, env *object.Environment) (object.Object, error) {
@@ -277,26 +279,28 @@ func evalCallExpression(expr *ast.CallExpression, env *object.Environment) (obje
 	if err != nil {
 		return nil, err
 	}
-	fn, ok := called.(*object.Function)
-	if !ok {
-		return nil, fmt.Errorf("not a function: %s", expr.Function.String())
-	}
-	if len(fn.Parameters) != len(expr.Arguments) {
-		return nil, fmt.Errorf("function with %d parameters called with %d arguments", len(fn.Parameters), len(expr.Arguments))
-	}
-
-	fnEnv := object.NewEnclosedEnvironment(fn.Env)
-	for i, param := range fn.Parameters {
-		arg, err := Eval(expr.Arguments[i], env)
+	// Evaluate arguments
+	args := make([]object.Object, len(expr.Arguments))
+	for i, argExpr := range expr.Arguments {
+		arg, err := Eval(argExpr, env)
 		if err != nil {
 			return nil, err
 		}
-		fnEnv.Set(param, arg)
+		args[i] = arg
 	}
-
-	result, err := evalStatementsAndReturn(fn.Body.Statements, fnEnv)
-	if err != nil {
-		return nil, err
+	switch fn := called.(type) {
+	case *object.Function:
+		if len(fn.Parameters) != len(expr.Arguments) {
+			return nil, fmt.Errorf("function with %d parameters called with %d arguments", len(fn.Parameters), len(expr.Arguments))
+		}
+		fnEnv := object.NewEnclosedEnvironment(fn.Env)
+		for i, param := range fn.Parameters {
+			fnEnv.Set(param, args[i])
+		}
+		return evalStatementsAndReturn(fn.Body.Statements, fnEnv)
+	case *object.Builtin:
+		return fn.Fn(args...)
+	default:
+		return nil, fmt.Errorf("not a function: %s", expr.Function.String())
 	}
-	return result, nil
 }

@@ -206,6 +206,24 @@ func TestFunctionCall(t *testing.T) {
 	}
 }
 
+func TestBuiltinFunctions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{`len("")`, 0},
+		{`len("hello world")`, 11},
+	}
+	for _, test := range tests {
+		result, err := runEval(test.input)
+		if err != nil {
+			t.Errorf("Eval failed: %s", err)
+		} else {
+			testObject(t, result, test.expected)
+		}
+	}
+}
+
 func TestErrorHandling(t *testing.T) {
 	tests := []struct {
 		input   string
@@ -220,6 +238,8 @@ func TestErrorHandling(t *testing.T) {
 		{"(fn(x) {x})()", "called with 0 argument"},
 		{`"5"-"4"`, "- not supported"},
 		{`"5"+4`, "+ not supported"},
+		{`len(1)`, "not supported"},
+		{`len("a", "b")`, "number of arguments"},
 	}
 
 	for _, test := range tests {
@@ -291,4 +311,17 @@ func testNullObject(t *testing.T, obj object.Object) bool {
 		return false
 	}
 	return true
+}
+
+func testObject(t *testing.T, obj object.Object, expected interface{}) bool {
+	switch expected := expected.(type) {
+	case int:
+		return testIntegerObject(t, obj, int64(expected))
+	case bool:
+		return testBooleanObject(t, obj, expected)
+	case string:
+		return testStringObject(t, obj, expected)
+	default:
+		return false
+	}
 }
