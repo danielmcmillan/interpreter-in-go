@@ -74,6 +74,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	parser.registerPrefix(token.MINUS, parser.parsePrefixExpression)
 	parser.registerPrefix(token.IF, parser.parseIfExpression)
 	parser.registerPrefix(token.FUNCTION, parser.parseFunctionalLiteral)
+	parser.registerPrefix(token.LBRACKET, parser.parseArrayExpression)
 	parser.registerInfix(token.EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.NOT_EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.LT, parser.parseInfixExpression)
@@ -121,9 +122,10 @@ func (parser *Parser) ParseProgram() *ast.Program {
 
 	for !parser.currentTokenIs(token.EOF) {
 		statement, err := parser.ParseStatement()
+		tokenErr := parser.nextToken()
 		if err == nil {
 			program.Statements = append(program.Statements, statement)
-			err = parser.nextToken()
+			err = tokenErr
 		}
 		if err != nil {
 			parser.errors = append(parser.errors, err)
@@ -443,6 +445,31 @@ func (parser *Parser) parseCallExpression(function ast.Expression) (ast.Expressi
 		}
 	}
 	if err := parser.expectPeek(token.RPAREN); err != nil {
+		return nil, err
+	}
+	return expr, nil
+}
+
+func (parser *Parser) parseArrayExpression() (ast.Expression, error) {
+	expr := &ast.ArrayExpression{Token: parser.currentToken, Elements: make([]ast.Expression, 0)}
+	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(token.RBRACKET) {
+		if err := parser.nextToken(); err != nil {
+			return nil, err
+		}
+		elem, err := parser.ParseExpression(LOWEST)
+		if err != nil {
+			return nil, err
+		}
+		expr.Elements = append(expr.Elements, elem)
+		if parser.peekTokenIs(token.COMMA) {
+			if err := parser.nextToken(); err != nil {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+	if err := parser.expectPeek(token.RBRACKET); err != nil {
 		return nil, err
 	}
 	return expr, nil

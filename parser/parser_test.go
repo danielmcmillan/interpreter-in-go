@@ -175,6 +175,45 @@ func TestStringLiteralExpression(t *testing.T) {
 	testStringLiteral(t, statement.Expression, "hello")
 }
 
+func TestArrayExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []interface{}
+	}{
+		{`[1, two, true]`, []interface{}{1, "two", true}},
+		{`[]`, []interface{}{}},
+		{`[1 + 1, 1 + 2]`, []interface{}{nil, nil}},
+	}
+
+	for _, test := range tests {
+		lexer := lexer.New(test.input)
+		parser := New(lexer)
+		program := parser.ParseProgram()
+		checkParserErrors(t, parser)
+		checkProgramLen(t, program, 1)
+
+		statement, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("Expected expression statement, got %T", program.Statements[0])
+		}
+
+		arr, ok := statement.Expression.(*ast.ArrayExpression)
+		if !ok {
+			t.Fatalf("Expected ArrayExpression, got %T", statement.Expression)
+		}
+
+		if len(arr.Elements) != len(test.expected) {
+			t.Fatalf("Expected %d elements, got %d", len(test.expected), len(arr.Elements))
+		}
+
+		for i, elem := range arr.Elements {
+			if test.expected[i] != nil && !testLiteralExpression(t, elem, test.expected[i]) {
+				return
+			}
+		}
+	}
+}
+
 func TestParsingPrefixExpression(t *testing.T) {
 	prefixTests := []struct {
 		input    string
