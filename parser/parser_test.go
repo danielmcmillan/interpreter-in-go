@@ -8,6 +8,15 @@ import (
 	"danielmcm.com/interpreterbook/lexer"
 )
 
+func TestEmptyProgram(t *testing.T) {
+	lexer := lexer.New("")
+	parser := New(lexer)
+
+	program := parser.ParseProgram()
+	checkParserErrors(t, parser)
+	checkProgramLen(t, program, 0)
+}
+
 func TestLetStatements(t *testing.T) {
 	input := `
 		let x = 5;

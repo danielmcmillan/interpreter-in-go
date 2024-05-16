@@ -140,6 +140,13 @@ func TestNextToken(t *testing.T) {
 	}
 }
 
+func TestEmptyInput(t *testing.T) {
+	lexer := New("")
+	if tok, err := lexer.NextToken(); err != nil || tok.Type != token.EOF {
+		t.Fatalf("expected EOF, got %v error %v", tok, err)
+	}
+}
+
 func TestErrors(t *testing.T) {
 	tests := []struct {
 		input   string

@@ -62,7 +62,7 @@ func evalStatementsAndReturn(statements []ast.Statement, env *object.Environment
 }
 
 func evalStatements(statements []ast.Statement, env *object.Environment) (object.Object, error) {
-	var result object.Object
+	var result object.Object = NULL
 	for _, statement := range statements {
 		obj, err := Eval(statement, env)
 		if err != nil {

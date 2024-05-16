@@ -9,6 +9,13 @@ import (
 	"danielmcm.com/interpreterbook/parser"
 )
 
+func TestEvalEmptyProgram(t *testing.T) {
+	result, ok := testEval(t, "")
+	if ok && result != NULL {
+		t.Fatalf("expected empty program to evaluate to NULL, got %v", result)
+	}
+}
+
 func TestEvalIntegerExpression(t *testing.T) {
 	tests := []struct {
 		input    string
