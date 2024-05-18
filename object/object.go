@@ -15,6 +15,7 @@ const (
 	INTEGER_OBJ      = "INTEGER"
 	BOOLEAN_OBJ      = "BOOLEAN"
 	STRING_OBJ       = "STRING"
+	ARRAY_OBJ        = "ARRAY"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	FUNCTION_OBJ     = "FUNCTION"
 	BUILTIN_OBJ      = "BUILTIN"
@@ -98,6 +99,26 @@ func (str *String) Type() ObjectType {
 }
 func (str *String) Inspect() string {
 	return str.Value
+}
+
+type Array struct {
+	Elements []Object
+}
+
+func (arr *Array) Type() ObjectType {
+	return ARRAY_OBJ
+}
+func (arr *Array) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("[")
+	for i, elem := range arr.Elements {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(elem.Inspect())
+	}
+	out.WriteString("]")
+	return out.String()
 }
 
 type ReturnValue struct {

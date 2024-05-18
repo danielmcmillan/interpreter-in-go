@@ -45,6 +45,8 @@ func Eval(node ast.Node, env *object.Environment) (object.Object, error) {
 		return evalFunctionLiteral(node, env)
 	case *ast.CallExpression:
 		return evalCallExpression(node, env)
+	case *ast.ArrayExpression:
+		return evalArrayExpression(node, env)
 	}
 	return nil, fmt.Errorf(`can't eval node type %T (token "%s")`, node, node.TokenLiteral())
 }
@@ -303,4 +305,19 @@ func evalCallExpression(expr *ast.CallExpression, env *object.Environment) (obje
 	default:
 		return nil, fmt.Errorf("not a function: %s", expr.Function.String())
 	}
+}
+
+func evalArrayExpression(expr *ast.ArrayExpression, env *object.Environment) (object.Object, error) {
+	// Evaluate elements
+	obj := &object.Array{
+		Elements: make([]object.Object, len(expr.Elements)),
+	}
+	for i, elemExpr := range expr.Elements {
+		arg, err := Eval(elemExpr, env)
+		if err != nil {
+			return nil, err
+		}
+		obj.Elements[i] = arg
+	}
+	return obj, nil
 }

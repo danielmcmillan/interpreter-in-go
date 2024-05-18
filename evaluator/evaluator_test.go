@@ -91,6 +91,33 @@ func TestEvalStringExpression(t *testing.T) {
 	}
 }
 
+func TestEvalArrayExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []interface{}
+	}{
+		{`["hello", 1, true]`, []interface{}{"hello", 1, true}},
+		{`[]`, []interface{}{}},
+	}
+
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if !ok {
+			continue
+		}
+		arr, ok := result.(*object.Array)
+		if !ok {
+			t.Errorf("expected Array object, got %s", result.Type())
+		}
+		if len(arr.Elements) != len(test.expected) {
+			t.Errorf("expected array to have %d elements, got %d", len(test.expected), len(arr.Elements))
+		}
+		for i, elem := range arr.Elements {
+			testObject(t, elem, test.expected[i])
+		}
+	}
+}
+
 func TestEvalIfExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
