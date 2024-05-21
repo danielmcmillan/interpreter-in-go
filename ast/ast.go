@@ -334,3 +334,24 @@ func (ae *ArrayExpression) String() string {
 
 	return out.String()
 }
+
+type IndexExpression struct {
+	Token token.Token
+	Array Expression
+	Index Expression
+}
+
+func (ie *IndexExpression) expressionNode() {}
+func (ie *IndexExpression) TokenLiteral() string {
+	return ie.Token.Literal
+}
+func (ie *IndexExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ie.Array.String())
+	out.WriteString("[")
+	out.WriteString(ie.Index.String())
+	out.WriteString("]")
+
+	return out.String()
+}

@@ -240,6 +240,23 @@ func TestFunctionCall(t *testing.T) {
 	}
 }
 
+func TestArrayIndex(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"[123][0]", 123},
+		{"[][0]", nil},
+		{"[1,2,3][10/5]", 3},
+	}
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			testObject(t, result, test.expected)
+		}
+	}
+}
+
 func TestBuiltinFunctions(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -283,6 +300,8 @@ func TestErrorHandling(t *testing.T) {
 		{`"5"+4`, "+ not supported"},
 		{`len(1)`, "not supported"},
 		{`len("a", "b")`, "number of arguments"},
+		{`5[0]`, "not an array: 5"},
+		{`[5][true]`, "index must be an integer"},
 	}
 
 	for _, test := range tests {

@@ -487,6 +487,42 @@ func TestCallExpression(t *testing.T) {
 	}
 }
 
+func TestIndexExpression(t *testing.T) {
+	tests := []struct {
+		input string
+		array string
+		index interface{}
+	}{
+		{"a[1]", "a", 1},
+		{"b[x]", "b", "x"},
+	}
+
+	for _, test := range tests {
+		lexer := lexer.New(test.input)
+		parser := New(lexer)
+		program := parser.ParseProgram()
+		checkParserErrors(t, parser)
+		checkProgramLen(t, program, 1)
+
+		statement, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("Expected expression statement, got %T", program.Statements[0])
+		}
+
+		expr, ok := statement.Expression.(*ast.IndexExpression)
+		if !ok {
+			t.Fatalf("Expected IndexExpression, got %T", statement.Expression)
+		}
+
+		if !testLiteralExpression(t, expr.Array, test.array) {
+			return
+		}
+		if !testLiteralExpression(t, expr.Index, test.index) {
+			return
+		}
+	}
+}
+
 func checkParserErrors(t *testing.T, parser *Parser) {
 	errors := parser.Errors()
 	if len(errors) > 0 {

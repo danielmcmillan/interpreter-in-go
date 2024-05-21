@@ -39,6 +39,7 @@ const (
 	PRODUCT
 	PREFIX
 	CALL
+	INDEX
 )
 
 var precedences = map[token.TokenType]int{
@@ -51,6 +52,7 @@ var precedences = map[token.TokenType]int{
 	token.ASTERISK: PRODUCT,
 	token.SLASH:    PRODUCT,
 	token.LPAREN:   CALL,
+	token.LBRACKET: INDEX,
 }
 
 func getPrecedence(tokenType token.TokenType) int {
@@ -75,6 +77,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	parser.registerPrefix(token.IF, parser.parseIfExpression)
 	parser.registerPrefix(token.FUNCTION, parser.parseFunctionalLiteral)
 	parser.registerPrefix(token.LBRACKET, parser.parseArrayExpression)
+	parser.registerInfix(token.LBRACKET, parser.parseIndexExpression)
 	parser.registerInfix(token.EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.NOT_EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.LT, parser.parseInfixExpression)
@@ -469,6 +472,22 @@ func (parser *Parser) parseArrayExpression() (ast.Expression, error) {
 			break
 		}
 	}
+	if err := parser.expectPeek(token.RBRACKET); err != nil {
+		return nil, err
+	}
+	return expr, nil
+}
+
+func (parser *Parser) parseIndexExpression(array ast.Expression) (ast.Expression, error) {
+	expr := &ast.IndexExpression{Token: parser.currentToken, Array: array}
+	if err := parser.nextToken(); err != nil {
+		return nil, err
+	}
+	index, err := parser.ParseExpression(LOWEST)
+	if err != nil {
+		return nil, err
+	}
+	expr.Index = index
 	if err := parser.expectPeek(token.RBRACKET); err != nil {
 		return nil, err
 	}

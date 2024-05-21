@@ -47,6 +47,8 @@ func Eval(node ast.Node, env *object.Environment) (object.Object, error) {
 		return evalCallExpression(node, env)
 	case *ast.ArrayExpression:
 		return evalArrayExpression(node, env)
+	case *ast.IndexExpression:
+		return evalIndexExpression(node, env)
 	}
 	return nil, fmt.Errorf(`can't eval node type %T (token "%s")`, node, node.TokenLiteral())
 }
@@ -320,4 +322,27 @@ func evalArrayExpression(expr *ast.ArrayExpression, env *object.Environment) (ob
 		obj.Elements[i] = arg
 	}
 	return obj, nil
+}
+
+func evalIndexExpression(expr *ast.IndexExpression, env *object.Environment) (object.Object, error) {
+	arrObj, err := Eval(expr.Array, env)
+	if err != nil {
+		return nil, err
+	}
+	array, ok := arrObj.(*object.Array)
+	if !ok {
+		return nil, fmt.Errorf("not an array: %s", expr.Array.String())
+	}
+	indexObj, err := Eval(expr.Index, env)
+	if err != nil {
+		return nil, err
+	}
+	index, ok := indexObj.(*object.Integer)
+	if !ok {
+		return nil, fmt.Errorf("index must be an integer: %s", expr.Index.String())
+	}
+	if index.Value < 0 || index.Value >= int64(len(array.Elements)) {
+		return NULL, nil
+	}
+	return array.Elements[index.Value], nil
 }
