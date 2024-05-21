@@ -278,19 +278,27 @@ func evalFunctionLiteral(expr *ast.FunctionLiteral, env *object.Environment) (ob
 	return obj, nil
 }
 
+func evalExpressions(expressions []ast.Expression, env *object.Environment) ([]object.Object, error) {
+	objects := make([]object.Object, len(expressions))
+	for i, expr := range expressions {
+		obj, err := Eval(expr, env)
+		if err != nil {
+			return nil, err
+		}
+		objects[i] = obj
+	}
+	return objects, nil
+}
+
 func evalCallExpression(expr *ast.CallExpression, env *object.Environment) (object.Object, error) {
 	called, err := Eval(expr.Function, env)
 	if err != nil {
 		return nil, err
 	}
 	// Evaluate arguments
-	args := make([]object.Object, len(expr.Arguments))
-	for i, argExpr := range expr.Arguments {
-		arg, err := Eval(argExpr, env)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = arg
+	args, err := evalExpressions(expr.Arguments, env)
+	if err != nil {
+		return nil, err
 	}
 	switch fn := called.(type) {
 	case *object.Function:
@@ -310,16 +318,12 @@ func evalCallExpression(expr *ast.CallExpression, env *object.Environment) (obje
 }
 
 func evalArrayExpression(expr *ast.ArrayExpression, env *object.Environment) (object.Object, error) {
-	// Evaluate elements
-	obj := &object.Array{
-		Elements: make([]object.Object, len(expr.Elements)),
+	elements, err := evalExpressions(expr.Elements, env)
+	if err != nil {
+		return nil, err
 	}
-	for i, elemExpr := range expr.Elements {
-		arg, err := Eval(elemExpr, env)
-		if err != nil {
-			return nil, err
-		}
-		obj.Elements[i] = arg
+	obj := &object.Array{
+		Elements: elements,
 	}
 	return obj, nil
 }

@@ -314,6 +314,8 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{"-(5+5)", "(-(5 + 5));\n"},
 		{"!(true == true)", "(!(true == true));\n"},
 		{"a * add(b + c, d - e) * f", "((a * add((b + c), (d - e))) * f);\n"},
+		{"a * [1, 2, 3, 4][b * c] * d", "((a * ([1, 2, 3, 4][(b * c)])) * d);\n"},
+		{"add(a * b[2], b[1], 2 * [1, 2][1])", "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])));\n"},
 	}
 
 	for _, test := range tests {
@@ -325,7 +327,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		actual := program.String()
 
 		if test.expected != actual {
-			t.Fatalf("Expected %s, got %s\n", test.expected, actual)
+			t.Fatalf("Expected `%s`, got `%s`\n", test.expected, actual)
 		}
 	}
 }

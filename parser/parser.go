@@ -428,9 +428,9 @@ func (parser *Parser) parseFunctionalLiteral() (ast.Expression, error) {
 	return expr, nil
 }
 
-func (parser *Parser) parseCallExpression(function ast.Expression) (ast.Expression, error) {
-	expr := &ast.CallExpression{Token: parser.currentToken, Function: function, Arguments: make([]ast.Expression, 0)}
-	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(token.RPAREN) {
+func (parser *Parser) parseExpressionList(endToken token.TokenType) ([]ast.Expression, error) {
+	result := make([]ast.Expression, 0)
+	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(endToken) {
 		if err := parser.nextToken(); err != nil {
 			return nil, err
 		}
@@ -438,7 +438,7 @@ func (parser *Parser) parseCallExpression(function ast.Expression) (ast.Expressi
 		if err != nil {
 			return nil, err
 		}
-		expr.Arguments = append(expr.Arguments, arg)
+		result = append(result, arg)
 		if parser.peekTokenIs(token.COMMA) {
 			if err := parser.nextToken(); err != nil {
 				return nil, err
@@ -447,34 +447,27 @@ func (parser *Parser) parseCallExpression(function ast.Expression) (ast.Expressi
 			break
 		}
 	}
-	if err := parser.expectPeek(token.RPAREN); err != nil {
+	if err := parser.expectPeek(endToken); err != nil {
 		return nil, err
 	}
+	return result, nil
+}
+
+func (parser *Parser) parseCallExpression(function ast.Expression) (ast.Expression, error) {
+	args, err := parser.parseExpressionList(token.RPAREN)
+	if err != nil {
+		return nil, err
+	}
+	expr := &ast.CallExpression{Token: parser.currentToken, Function: function, Arguments: args}
 	return expr, nil
 }
 
 func (parser *Parser) parseArrayExpression() (ast.Expression, error) {
-	expr := &ast.ArrayExpression{Token: parser.currentToken, Elements: make([]ast.Expression, 0)}
-	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(token.RBRACKET) {
-		if err := parser.nextToken(); err != nil {
-			return nil, err
-		}
-		elem, err := parser.ParseExpression(LOWEST)
-		if err != nil {
-			return nil, err
-		}
-		expr.Elements = append(expr.Elements, elem)
-		if parser.peekTokenIs(token.COMMA) {
-			if err := parser.nextToken(); err != nil {
-				return nil, err
-			}
-		} else {
-			break
-		}
-	}
-	if err := parser.expectPeek(token.RBRACKET); err != nil {
+	elements, err := parser.parseExpressionList(token.RBRACKET)
+	if err != nil {
 		return nil, err
 	}
+	expr := &ast.ArrayExpression{Token: parser.currentToken, Elements: elements}
 	return expr, nil
 }
 

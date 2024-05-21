@@ -247,7 +247,8 @@ func TestArrayIndex(t *testing.T) {
 	}{
 		{"[123][0]", 123},
 		{"[][0]", nil},
-		{"[1,2,3][10/5]", 3},
+		{"let a = [1,2,3]; a[10/5]", 3},
+		{"let i = 2/2; [1, 2][i]", 2},
 	}
 	for _, test := range tests {
 		result, ok := testEval(t, test.input)

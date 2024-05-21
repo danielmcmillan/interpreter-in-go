@@ -348,10 +348,11 @@ func (ie *IndexExpression) TokenLiteral() string {
 func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
 
+	out.WriteString("(")
 	out.WriteString(ie.Array.String())
 	out.WriteString("[")
 	out.WriteString(ie.Index.String())
-	out.WriteString("]")
+	out.WriteString("])")
 
 	return out.String()
 }
