@@ -247,6 +247,15 @@ func TestBuiltinFunctions(t *testing.T) {
 	}{
 		{`len("")`, 0},
 		{`len("hello world")`, 11},
+		{`len([1, 2, 3])`, 3},
+		{`first([1, 2, 3])`, 1},
+		{`first([])`, nil},
+		{`rest([1, 2, 3])`, []interface{}{2, 3}},
+		{`rest([])`, nil},
+		{`last([1, 2, 3])`, 3},
+		{`last([])`, nil},
+		{`push([1, 2], 3)`, []interface{}{1, 2, 3}},
+		{`push([], 2)`, []interface{}{2}},
 	}
 	for _, test := range tests {
 		result, err := runEval(test.input)
@@ -355,7 +364,26 @@ func testObject(t *testing.T, obj object.Object, expected interface{}) bool {
 		return testBooleanObject(t, obj, expected)
 	case string:
 		return testStringObject(t, obj, expected)
+	case []interface{}:
+		return testArrayObject(t, obj, expected)
 	default:
 		return false
 	}
+}
+
+func testArrayObject(t *testing.T, obj object.Object, expected []interface{}) bool {
+	arr, ok := obj.(*object.Array)
+	if !ok {
+		t.Errorf("expected Array object, got %s", obj.Type())
+		return false
+	}
+	if len(arr.Elements) != len(expected) {
+		t.Errorf("expected array to have %d elements, got %d", len(expected), len(arr.Elements))
+		return false
+	}
+	for i, elem := range arr.Elements {
+		testObject(t, elem, expected[i])
+		return false
+	}
+	return true
 }

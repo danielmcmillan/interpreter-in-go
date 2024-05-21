@@ -6,18 +6,94 @@ import (
 	"danielmcm.com/interpreterbook/object"
 )
 
+func checkArgCount(name string, args []object.Object, expected int) error {
+	if len(args) != expected {
+		return fmt.Errorf("`%s` received wrong number of arguments. expected %d, got %d", name, expected, len(args))
+	}
+	return nil
+}
+
+func argTypeError(name string, arg object.Object) error {
+	return fmt.Errorf("`%s` argument of type %s not supported", name, arg.Type())
+}
+
 var builtins = map[string]*object.Builtin{
 	"len": {
 		Fn: func(args ...object.Object) (object.Object, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("`len` received wrong number of arguments. expected %d, got %d", 1, len(args))
+			if err := checkArgCount("len", args, 1); err != nil {
+				return nil, err
 			}
 			switch arg := args[0].(type) {
 			case *object.String:
 				return &object.Integer{Value: int64(len(arg.Value))}, nil
+			case *object.Array:
+				return &object.Integer{Value: int64(len(arg.Elements))}, nil
 			default:
-				return nil, fmt.Errorf("`len` argument of type %s not supported", args[0].Type())
+				return nil, argTypeError("len", args[0])
 			}
+		},
+	},
+	"first": {
+		Fn: func(args ...object.Object) (object.Object, error) {
+			if err := checkArgCount("first", args, 1); err != nil {
+				return nil, err
+			}
+			arr, ok := args[0].(*object.Array)
+			if !ok {
+				return nil, argTypeError("first", args[0])
+			}
+			if len(arr.Elements) > 0 {
+				return arr.Elements[0], nil
+			} else {
+				return NULL, nil
+			}
+		},
+	},
+	"last": {
+		Fn: func(args ...object.Object) (object.Object, error) {
+			if err := checkArgCount("last", args, 1); err != nil {
+				return nil, err
+			}
+			arr, ok := args[0].(*object.Array)
+			if !ok {
+				return nil, argTypeError("last", args[0])
+			}
+			if len(arr.Elements) > 0 {
+				return arr.Elements[len(arr.Elements)-1], nil
+			} else {
+				return NULL, nil
+			}
+		},
+	},
+	"rest": {
+		Fn: func(args ...object.Object) (object.Object, error) {
+			if err := checkArgCount("rest", args, 1); err != nil {
+				return nil, err
+			}
+			arr, ok := args[0].(*object.Array)
+			if !ok {
+				return nil, argTypeError("rest", args[0])
+			}
+			if len(arr.Elements) > 0 {
+				return &object.Array{
+					Elements: arr.Elements[1:],
+				}, nil
+			} else {
+				return NULL, nil
+			}
+		},
+	},
+	"push": {
+		Fn: func(args ...object.Object) (object.Object, error) {
+			if err := checkArgCount("push", args, 2); err != nil {
+				return nil, err
+			}
+			arr, ok := args[0].(*object.Array)
+			if !ok {
+				return nil, argTypeError("push", args[0])
+			}
+			arr.Elements = append(arr.Elements, args[1])
+			return arr, nil
 		},
 	},
 }
