@@ -92,8 +92,12 @@ var builtins = map[string]*object.Builtin{
 			if !ok {
 				return nil, argTypeError("push", args[0])
 			}
-			arr.Elements = append(arr.Elements, args[1])
-			return arr, nil
+			elements := make([]object.Object, len(arr.Elements)+1)
+			copy(elements, arr.Elements)
+			elements[len(arr.Elements)] = args[1]
+			return &object.Array{
+				Elements: elements,
+			}, nil
 		},
 	},
 }
