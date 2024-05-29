@@ -214,6 +214,50 @@ func TestArrayExpression(t *testing.T) {
 	}
 }
 
+func TestHashExpression(t *testing.T) {
+	type expectedEntry struct {
+		key   interface{}
+		value interface{}
+	}
+	tests := []struct {
+		input    string
+		expected []expectedEntry
+	}{
+		{`{}`, []expectedEntry{}},
+		{`{abc: 123, 123: abc}`, []expectedEntry{{"abc", 123}, {123, "abc"}}},
+		{`{true: [1 + 1 == 2]}`, []expectedEntry{{true, nil}}},
+	}
+
+	for _, test := range tests {
+		lexer := lexer.New(test.input)
+		parser := New(lexer)
+		program := parser.ParseProgram()
+		checkParserErrors(t, parser)
+		checkProgramLen(t, program, 1)
+
+		statement, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("Expected expression statement, got %T", program.Statements[0])
+		}
+
+		hash, ok := statement.Expression.(*ast.HashExpression)
+		if !ok {
+			t.Fatalf("Expected HashExpression, got %T", statement.Expression)
+		}
+
+		if len(hash.Entries) != len(test.expected) {
+			t.Fatalf("Expected %d entries, got %d", len(test.expected), len(hash.Entries))
+		}
+
+		for i, entry := range hash.Entries {
+			if !testLiteralExpression(t, entry.Key, test.expected[i].key) ||
+				(test.expected[i].value != nil && !testLiteralExpression(t, entry.Value, test.expected[i])) {
+				return
+			}
+		}
+	}
+}
+
 func TestParsingPrefixExpression(t *testing.T) {
 	prefixTests := []struct {
 		input    string

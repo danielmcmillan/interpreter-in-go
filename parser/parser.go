@@ -77,6 +77,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	parser.registerPrefix(token.IF, parser.parseIfExpression)
 	parser.registerPrefix(token.FUNCTION, parser.parseFunctionalLiteral)
 	parser.registerPrefix(token.LBRACKET, parser.parseArrayExpression)
+	parser.registerPrefix(token.LBRACE, parser.parseHashExpression)
 	parser.registerInfix(token.LBRACKET, parser.parseIndexExpression)
 	parser.registerInfix(token.EQ, parser.parseInfixExpression)
 	parser.registerInfix(token.NOT_EQ, parser.parseInfixExpression)
@@ -469,6 +470,44 @@ func (parser *Parser) parseArrayExpression() (ast.Expression, error) {
 	}
 	expr := &ast.ArrayExpression{Token: parser.currentToken, Elements: elements}
 	return expr, nil
+}
+
+func (parser *Parser) parseHashExpression() (ast.Expression, error) {
+	expr := ast.HashExpression{Token: parser.currentToken}
+	entries := make([]ast.HashEntry, 0)
+	for parser.currentTokenIs(token.COMMA) || !parser.peekTokenIs(token.RBRACE) {
+		if err := parser.nextToken(); err != nil {
+			return nil, err
+		}
+		key, err := parser.ParseExpression(LOWEST)
+		if err != nil {
+			return nil, err
+		}
+		err = parser.expectPeek(token.COLON)
+		if err != nil {
+			return nil, err
+		}
+		if err := parser.nextToken(); err != nil {
+			return nil, err
+		}
+		val, err := parser.ParseExpression(LOWEST)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, ast.HashEntry{Key: key, Value: val})
+		if parser.peekTokenIs(token.COMMA) {
+			if err := parser.nextToken(); err != nil {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+	if err := parser.expectPeek(token.RBRACE); err != nil {
+		return nil, err
+	}
+	expr.Entries = entries
+	return &expr, nil
 }
 
 func (parser *Parser) parseIndexExpression(array ast.Expression) (ast.Expression, error) {

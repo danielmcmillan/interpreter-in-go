@@ -62,6 +62,8 @@ func (lexer *Lexer) NextToken() (token.Token, error) {
 		nextToken = token.Token{Type: token.GT, Literal: string(lexer.char)}
 	case ';':
 		nextToken = token.Token{Type: token.SEMICOLON, Literal: string(lexer.char)}
+	case ':':
+		nextToken = token.Token{Type: token.COLON, Literal: string(lexer.char)}
 	case '(':
 		nextToken = token.Token{Type: token.LPAREN, Literal: string(lexer.char)}
 	case ')':

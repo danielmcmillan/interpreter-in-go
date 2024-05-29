@@ -335,6 +335,36 @@ func (ae *ArrayExpression) String() string {
 	return out.String()
 }
 
+type HashEntry struct {
+	Key   Expression
+	Value Expression
+}
+type HashExpression struct {
+	Token   token.Token
+	Entries []HashEntry
+}
+
+func (he *HashExpression) expressionNode() {}
+func (he *HashExpression) TokenLiteral() string {
+	return he.Token.Literal
+}
+func (he *HashExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("{")
+	for i, entry := range he.Entries {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(entry.Key.String())
+		out.WriteString(": ")
+		out.WriteString(entry.Value.String())
+	}
+	out.WriteString("}")
+
+	return out.String()
+}
+
 type IndexExpression struct {
 	Token token.Token
 	Array Expression

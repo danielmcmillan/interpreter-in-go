@@ -50,7 +50,7 @@ func Eval(node ast.Node, env *object.Environment) (object.Object, error) {
 	case *ast.IndexExpression:
 		return evalIndexExpression(node, env)
 	}
-	return nil, fmt.Errorf(`can't eval node type %T (token "%s")`, node, node.TokenLiteral())
+	return nil, fmt.Errorf(`can't eval node type %T (%s)`, node, node.String())
 }
 
 func evalStatementsAndReturn(statements []ast.Statement, env *object.Environment) (object.Object, error) {
