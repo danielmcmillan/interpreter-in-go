@@ -16,6 +16,7 @@ const (
 	BOOLEAN_OBJ      = "BOOLEAN"
 	STRING_OBJ       = "STRING"
 	ARRAY_OBJ        = "ARRAY"
+	HASH_OBJ         = "HASH"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	FUNCTION_OBJ     = "FUNCTION"
 	BUILTIN_OBJ      = "BUILTIN"
@@ -118,6 +119,99 @@ func (arr *Array) Inspect() string {
 		out.WriteString(elem.Inspect())
 	}
 	out.WriteString("]")
+	return out.String()
+}
+
+type HashKey struct {
+	Type ObjectType
+	str  string
+	num  int64
+}
+
+func HashKeyFromString(str string) HashKey {
+	return HashKey{Type: STRING_OBJ, str: str}
+}
+func HashKeyFromInt(integer int64) HashKey {
+	return HashKey{Type: INTEGER_OBJ, num: integer}
+}
+func HashKeyFromBool(boolean bool) HashKey {
+	key := HashKey{Type: BOOLEAN_OBJ}
+	if boolean {
+		key.num = 1
+	}
+	return key
+}
+func HashKeyFromObject(obj Object) (HashKey, bool) {
+	switch obj := obj.(type) {
+	case *String:
+		return HashKeyFromString(obj.Value), true
+	case *Integer:
+		return HashKeyFromInt(obj.Value), true
+	case *Boolean:
+		return HashKeyFromBool(obj.Value), true
+	default:
+		return HashKey{}, false
+	}
+}
+
+func (key *HashKey) AsString() (string, bool) {
+	if key.Type == STRING_OBJ {
+		return key.str, true
+	}
+	return "", false
+}
+
+func (key *HashKey) AsInteger() (int64, bool) {
+	if key.Type == INTEGER_OBJ {
+		return key.num, true
+	}
+	return 0, false
+}
+
+func (key *HashKey) AsBoolean() (bool, bool) {
+	if key.Type == BOOLEAN_OBJ {
+		if key.num == 1 {
+			return true, true
+		} else {
+			return false, true
+		}
+	}
+	return false, false
+}
+
+type Hash struct {
+	Entries map[HashKey]Object
+}
+
+func (hash *Hash) Type() ObjectType {
+	return HASH_OBJ
+}
+func (hash *Hash) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("{")
+	first := true
+	for key, elem := range hash.Entries {
+		if !first {
+			out.WriteString(", ")
+		}
+		if str, ok := key.AsString(); ok {
+			out.WriteString("\"")
+			out.WriteString(str)
+			out.WriteString("\"")
+		} else if num, ok := key.AsInteger(); ok {
+			out.WriteString(fmt.Sprintf("%d", num))
+		} else if bool, ok := key.AsBoolean(); ok {
+			if bool {
+				out.WriteString("true")
+			} else {
+				out.WriteString("false")
+			}
+		}
+		out.WriteString(": ")
+		out.WriteString(elem.Inspect())
+		first = false
+	}
+	out.WriteString("}")
 	return out.String()
 }
 

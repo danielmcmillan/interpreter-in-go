@@ -511,7 +511,7 @@ func (parser *Parser) parseHashExpression() (ast.Expression, error) {
 }
 
 func (parser *Parser) parseIndexExpression(array ast.Expression) (ast.Expression, error) {
-	expr := &ast.IndexExpression{Token: parser.currentToken, Array: array}
+	expr := &ast.IndexExpression{Token: parser.currentToken, Left: array}
 	if err := parser.nextToken(); err != nil {
 		return nil, err
 	}

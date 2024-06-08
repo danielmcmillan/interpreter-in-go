@@ -367,7 +367,7 @@ func (he *HashExpression) String() string {
 
 type IndexExpression struct {
 	Token token.Token
-	Array Expression
+	Left  Expression
 	Index Expression
 }
 
@@ -379,7 +379,7 @@ func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("(")
-	out.WriteString(ie.Array.String())
+	out.WriteString(ie.Left.String())
 	out.WriteString("[")
 	out.WriteString(ie.Index.String())
 	out.WriteString("])")

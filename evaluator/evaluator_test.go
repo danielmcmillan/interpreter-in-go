@@ -105,16 +105,31 @@ func TestEvalArrayExpression(t *testing.T) {
 		if !ok {
 			continue
 		}
-		arr, ok := result.(*object.Array)
+		testArrayObject(t, result, test.expected)
+	}
+}
+
+func TestEvalHashExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected map[interface{}]interface{}
+	}{
+		{`let t = true; {"a": 1, 2: "b", t: {4: [5]}}`, map[interface{}]interface{}{
+			"a": 1,
+			2:   "b",
+			true: map[interface{}]interface{}{
+				4: []interface{}{5},
+			},
+		}},
+		{`{}`, map[interface{}]interface{}{}},
+	}
+
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
 		if !ok {
-			t.Errorf("expected Array object, got %s", result.Type())
+			continue
 		}
-		if len(arr.Elements) != len(test.expected) {
-			t.Errorf("expected array to have %d elements, got %d", len(test.expected), len(arr.Elements))
-		}
-		for i, elem := range arr.Elements {
-			testObject(t, elem, test.expected[i])
-		}
+		testHashObject(t, result, test.expected)
 	}
 }
 
@@ -248,7 +263,25 @@ func TestArrayIndex(t *testing.T) {
 		{"[123][0]", 123},
 		{"[][0]", nil},
 		{"let a = [1,2,3]; a[10/5]", 3},
-		{"let i = 2/2; [1, 2][i]", 2},
+		{"let i = 2/2; [1, [2, 3]][i]", []interface{}{2, 3}},
+	}
+	for _, test := range tests {
+		result, ok := testEval(t, test.input)
+		if ok {
+			testObject(t, result, test.expected)
+		}
+	}
+}
+
+func TestHashIndex(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"{0: 123}[0]", 123},
+		{"{}[0]", nil},
+		{"let a = {\"x\": \"y\"}; a[\"x\"]", "y"},
+		{"{false: 9}[false]", 9},
 	}
 	for _, test := range tests {
 		result, ok := testEval(t, test.input)
@@ -302,8 +335,12 @@ func TestErrorHandling(t *testing.T) {
 		{`"5"+4`, "+ not supported"},
 		{`len(1)`, "not supported"},
 		{`len("a", "b")`, "number of arguments"},
-		{`5[0]`, "not an array: 5"},
-		{`[5][true]`, "index must be an integer"},
+		{`{fn(){}: 0}`, "hash key must be string, integer or boolean"},
+		{`5["x"]`, "not an array or hash: 5"},
+		{`"a"[true]`, "not an array or hash: \"a\""},
+		{`true[0]`, "not an array or hash: true"},
+		{`[5][true]`, "array index must be an integer"},
+		{`{1:2}[fn(){}]`, "hash index must be string, integer or boolean"},
 	}
 
 	for _, test := range tests {
@@ -387,6 +424,8 @@ func testObject(t *testing.T, obj object.Object, expected interface{}) bool {
 		return testStringObject(t, obj, expected)
 	case []interface{}:
 		return testArrayObject(t, obj, expected)
+	case map[interface{}]interface{}:
+		return testHashObject(t, obj, expected)
 	default:
 		return false
 	}
@@ -405,6 +444,42 @@ func testArrayObject(t *testing.T, obj object.Object, expected []interface{}) bo
 	for i, elem := range arr.Elements {
 		testObject(t, elem, expected[i])
 		return false
+	}
+	return true
+}
+
+func testHashObject(t *testing.T, obj object.Object, expected map[interface{}]interface{}) bool {
+	hash, ok := obj.(*object.Hash)
+	if !ok {
+		t.Errorf("expected Hash object, got %s", obj.Type())
+		return false
+	}
+	if len(hash.Entries) != len(expected) {
+		t.Errorf("expected hash to have %d entries, got %d", len(expected), len(hash.Entries))
+		return false
+	}
+	for expectedKey, expectedVal := range expected {
+		var key object.HashKey
+		switch expectedKey := expectedKey.(type) {
+		case string:
+			key = object.HashKeyFromString(expectedKey)
+		case int:
+			key = object.HashKeyFromInt(int64(expectedKey))
+		case bool:
+			key = object.HashKeyFromBool(expectedKey)
+		default:
+			t.Fatalf("invalid expected hash key %v", expectedKey)
+			return false
+		}
+
+		val, ok := hash.Entries[key]
+		if !ok {
+			t.Errorf("hash missing expected key %v", expectedKey)
+			return false
+		}
+		if !testObject(t, val, expectedVal) {
+			return false
+		}
 	}
 	return true
 }

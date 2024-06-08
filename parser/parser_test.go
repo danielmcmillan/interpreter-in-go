@@ -560,7 +560,7 @@ func TestIndexExpression(t *testing.T) {
 			t.Fatalf("Expected IndexExpression, got %T", statement.Expression)
 		}
 
-		if !testLiteralExpression(t, expr.Array, test.array) {
+		if !testLiteralExpression(t, expr.Left, test.array) {
 			return
 		}
 		if !testLiteralExpression(t, expr.Index, test.index) {

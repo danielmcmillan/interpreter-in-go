@@ -47,6 +47,8 @@ func Eval(node ast.Node, env *object.Environment) (object.Object, error) {
 		return evalCallExpression(node, env)
 	case *ast.ArrayExpression:
 		return evalArrayExpression(node, env)
+	case *ast.HashExpression:
+		return evalHashExpression(node, env)
 	case *ast.IndexExpression:
 		return evalIndexExpression(node, env)
 	}
@@ -328,25 +330,58 @@ func evalArrayExpression(expr *ast.ArrayExpression, env *object.Environment) (ob
 	return obj, nil
 }
 
+func evalHashExpression(expr *ast.HashExpression, env *object.Environment) (object.Object, error) {
+	hash := &object.Hash{}
+	hash.Entries = make(map[object.HashKey]object.Object)
+	for _, entry := range expr.Entries {
+		key, err := Eval(entry.Key, env)
+		if err != nil {
+			return nil, err
+		}
+		hashKey, ok := object.HashKeyFromObject(key)
+		if !ok {
+			return nil, fmt.Errorf("hash key must be string, integer or boolean: %s", entry.Key.String())
+		}
+		value, err := Eval(entry.Value, env)
+		if err != nil {
+			return nil, err
+		}
+		hash.Entries[hashKey] = value
+	}
+	return hash, nil
+}
+
 func evalIndexExpression(expr *ast.IndexExpression, env *object.Environment) (object.Object, error) {
-	arrObj, err := Eval(expr.Array, env)
+	leftObj, err := Eval(expr.Left, env)
 	if err != nil {
 		return nil, err
-	}
-	array, ok := arrObj.(*object.Array)
-	if !ok {
-		return nil, fmt.Errorf("not an array: %s", expr.Array.String())
 	}
 	indexObj, err := Eval(expr.Index, env)
 	if err != nil {
 		return nil, err
 	}
-	index, ok := indexObj.(*object.Integer)
-	if !ok {
-		return nil, fmt.Errorf("index must be an integer: %s", expr.Index.String())
+	switch leftObj := leftObj.(type) {
+	case *object.Array:
+		index, ok := indexObj.(*object.Integer)
+		if !ok {
+			return nil, fmt.Errorf("array index must be an integer: %s", expr.Index.String())
+		}
+		if index.Value < 0 || index.Value >= int64(len(leftObj.Elements)) {
+			return NULL, nil
+		}
+		return leftObj.Elements[index.Value], nil
+	case *object.Hash:
+		key, ok := object.HashKeyFromObject(indexObj)
+		if !ok {
+			return nil, fmt.Errorf("hash index must be string, integer or boolean: %s", expr.Index.String())
+		}
+		val, ok := leftObj.Entries[key]
+		if ok {
+			return val, nil
+		} else {
+			return NULL, nil
+		}
+	default:
+		return nil, fmt.Errorf("not an array or hash: %s", expr.Left.String())
 	}
-	if index.Value < 0 || index.Value >= int64(len(array.Elements)) {
-		return NULL, nil
-	}
-	return array.Elements[index.Value], nil
 }
