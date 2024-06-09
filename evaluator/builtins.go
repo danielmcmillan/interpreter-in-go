@@ -100,4 +100,15 @@ var builtins = map[string]*object.Builtin{
 			}, nil
 		},
 	},
+	"puts": {
+		Fn: func(args ...object.Object) (object.Object, error) {
+			for _, arg := range args {
+				_, err := fmt.Println(arg.Inspect())
+				if err != nil {
+					return nil, err
+				}
+			}
+			return NULL, nil
+		},
+	},
 }

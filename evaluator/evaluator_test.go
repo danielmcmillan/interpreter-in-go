@@ -308,6 +308,7 @@ func TestBuiltinFunctions(t *testing.T) {
 		{`push([1, 2], 3)`, []interface{}{1, 2, 3}},
 		{`push([], 2)`, []interface{}{2}},
 		{`let x = [1]; push(x, 2); x`, []interface{}{1}},
+		{`puts("hey")`, nil},
 	}
 	for _, test := range tests {
 		result, err := runEval(test.input)
